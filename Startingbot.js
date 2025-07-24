@@ -1,21 +1,31 @@
 async function simulate() {
-  const id = document.getElementById('userId').value.trim();
+  const usernameInput = document.getElementById('username').value.trim();
   const count = parseInt(document.getElementById('followerCount').value);
   const output = document.getElementById('output');
 
-  if (!id || isNaN(count) || count <= 0) {
-    output.innerHTML = '<span style="color: yellow;">Please enter a valid ID and follower count.</span>';
+  if (!usernameInput || isNaN(count) || count <= 0) {
+    output.innerHTML = '<span style="color: yellow;">Please enter a valid username and follower count.</span>';
     return;
   }
 
   try {
-    const userInfoResponse = await fetch(`https://users.roblox.com/v1/users/${id}`);
-    const userInfo = await userInfoResponse.json();
+    // Step 1: Convert username to user ID
+    const idRes = await fetch('https://users.roblox.com/v1/usernames/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ usernames: [usernameInput] })
+    });
+    const idData = await idRes.json();
+    const user = idData.data[0];
 
-    const avatarResponse = await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${id}&size=150x150&format=Png&isCircular=false`);
-    const avatarData = await avatarResponse.json();
+    if (!user) throw new Error('User not found');
+
+    // Step 2: Get avatar image
+    const avatarRes = await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${user.id}&size=150x150&format=Png&isCircular=false`);
+    const avatarData = await avatarRes.json();
     const avatarUrl = avatarData.data[0]?.imageUrl || '';
 
+    // Step 3: Simulate followers
     const prefixes = ['skibidilover', 'capybara_fan', 'melonmaster', 'robloxian', 'noobslayer', 'epicbuilder'];
 
     function randomBirthday() {
@@ -29,17 +39,19 @@ async function simulate() {
     for (let i = 0; i < count; i++) {
       const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
       const suffix = Math.floor(Math.random() * 10000);
-      const username = `${prefix}${suffix}`;
+      const fakeUser = `${prefix}${suffix}`;
       const birthday = randomBirthday();
-      followers += `• <strong>${username}</strong> <em>(Birthday: ${birthday})</em><br>`;
+      followers += `• <strong>${fakeUser}</strong> <em>(Birthday: ${birthday})</em><br>`;
     }
 
+    // Step 4: Render output
     output.innerHTML = `
-      <img src="${avatarUrl}" alt="Avatar" style="border-radius: 8px; margin-bottom: 10px;" /><br>
-      <strong>${userInfo.name}</strong> has gained <strong>${count}</strong> simulated followers! 🎉<br><br>${followers}
+      <img src="${avatarUrl}" alt="Avatar" /><br>
+      <strong>${user.name}</strong> has gained <strong>${count}</strong> simulated followers! 🎉<br><br>
+      ${followers}
     `;
   } catch (error) {
-    output.innerHTML = '<span style="color: red;">Failed to retrieve user data. Please check the ID and try again.</span>';
+    output.innerHTML = '<span style="color: red;">Oops! Couldn’t fetch user. Check the username and try again.</span>';
     console.error(error);
   }
 }
