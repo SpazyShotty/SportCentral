@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Account Follower Simulator</title>
+  <title>Roblox Follower Simulator</title>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css" />
   <style>
     body {
       font-family: 'Montserrat', sans-serif;
@@ -44,7 +43,7 @@
 <body>
   <div class="container">
     <h1>Simulate Followers</h1>
-    <input type="text" id="userId" placeholder="Enter Roblox User ID" />
+    <input type="text" id="username" placeholder="Enter Roblox Username" />
     <input type="number" id="followerCount" placeholder="Desired Followers" />
     <button onclick="simulate()">Generate</button>
     <div class="output" id="output"></div>
@@ -52,20 +51,27 @@
 
   <script>
     async function simulate() {
-      const id = document.getElementById('userId').value.trim();
+      const username = document.getElementById('username').value.trim();
       const count = parseInt(document.getElementById('followerCount').value);
       const output = document.getElementById('output');
 
-      if (!id || isNaN(count) || count <= 0) {
-        output.innerHTML = '<span style="color: yellow;">Please enter a valid ID and follower count.</span>';
+      if (!username || isNaN(count) || count <= 0) {
+        output.innerHTML = '<span style="color: yellow;">Please enter a valid username and follower count.</span>';
         return;
       }
 
       try {
-        const userRes = await fetch(`https://users.roblox.com/v1/users/${id}`);
-        const userInfo = await userRes.json();
+        const idRes = await fetch(`https://users.roblox.com/v1/usernames/users`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ usernames: [username] })
+        });
+        const idData = await idRes.json();
+        const user = idData.data[0];
 
-        const avatarRes = await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${id}&size=150x150&format=Png&isCircular=false`);
+        if (!user) throw new Error('User not found');
+
+        const avatarRes = await fetch(`https://thumbnails.roblox.com/v1/users/avatar-headshot?userIds=${user.id}&size=150x150&format=Png&isCircular=false`);
         const avatarData = await avatarRes.json();
         const avatarUrl = avatarData.data[0]?.imageUrl || '';
 
@@ -82,17 +88,17 @@
         for (let i = 0; i < count; i++) {
           const prefix = prefixes[Math.floor(Math.random() * prefixes.length)];
           const suffix = Math.floor(Math.random() * 10000);
-          const username = `${prefix}${suffix}`;
+          const usernameSim = `${prefix}${suffix}`;
           const birthday = randomBirthday();
-          followers += `• <strong>${username}</strong> <em>(Birthday: ${birthday})</em><br>`;
+          followers += `• <strong>${usernameSim}</strong> <em>(Birthday: ${birthday})</em><br>`;
         }
 
         output.innerHTML = `
           <img src="${avatarUrl}" alt="Avatar"/><br>
-          <strong>${userInfo.name}</strong> has gained <strong>${count}</strong> simulated followers! 🎉<br><br>${followers}
+          <strong>${user.name}</strong> has gained <strong>${count}</strong> simulated followers! 🎉<br><br>${followers}
         `;
       } catch (error) {
-        output.innerHTML = '<span style="color: red;">Error fetching user data. Make sure the ID is correct.</span>';
+        output.innerHTML = '<span style="color: red;">Oops! Couldn’t fetch user. Try checking the username spelling.</span>';
         console.error(error);
       }
     }
